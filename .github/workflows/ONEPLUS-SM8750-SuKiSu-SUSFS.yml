@@ -187,8 +187,7 @@ jobs:
         run: |
          cd kernel_workspace/kernel_platform
          sed -i 's/res="\$res\$(cat "\$file")"/res="-android15-8-g013ec21bba94-abogki383916444"/g' ./common/scripts/setlocalversion
-         sudo sed -i 's/-android15-8-g013ec21bba94-abogki383916444/-13/${{ github.event.inputs.KERNEL_NAME }}/g' ./common/scripts/setlocalversion
-
+         sudo sed -i 's/-android15-8-g013ec21bba94-abogki383916444/-13香/g' ./common/scripts/setlocalversion
       - name: Add sched_ext
         if: ${{inputs.enable_feature_z }}
         run: |
