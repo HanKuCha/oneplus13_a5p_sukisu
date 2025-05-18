@@ -5,7 +5,7 @@ on:
       CPU:
         description: "分支"
         required: true
-        default: 'sm8750'
+        default:'sm8750'
       FEIL:
         description: "配置文件"
         required: true
@@ -13,7 +13,7 @@ on:
       CPUD:
         description: "处理器代号"
         required: true
-        default: 'sun'
+        default:'sun'
       ANDROID_VERSION:
         description: "内核安卓版本"
         required: true
@@ -26,7 +26,6 @@ on:
         description: "修改内核名称（只可修改末尾）"
         required: true
         default: '-android15-8-g013ec21bba94-abogki383916444'
-
 
 jobs:
   build:
@@ -45,11 +44,11 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
-          
+
       - name: Configure Git
         run: |
          git config --global user.name "build"
-         git config --global user.email "3199167602@qq.com"
+         git config --global user.email "2314059017@qq.com"
 
       - name: Install dependencies
         run: |
@@ -69,7 +68,7 @@ jobs:
          repo --trace sync -c -j$(nproc --all) --no-tags
          rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
-         
+
       - name: Set up SukiSU
         run: |
          cd kernel_workspace/kernel_platform
@@ -79,14 +78,14 @@ jobs:
          echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
          export KSU_VERSION=$KSU_VERSION
          sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
-        
+
       - name: Set up susfs
         run: |
            cd kernel_workspace
            git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
            git clone https://github.com/ShirkNeko/SukiSU_patch.git
 
-           cd kernel_platform        
+           cd kernel_platform
            cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
            cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
            cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
@@ -113,7 +112,7 @@ jobs:
             echo "正在打lz4kd补丁"
             patch -p1 -F 3 < lz4kd.patch || true
             echo '完成LZ4KD补丁'
-           
+
       - name: Add SUSFS Configuration Settings
         run: |
           cd kernel_workspace/kernel_platform
@@ -123,7 +122,7 @@ jobs:
           # Add VFS configuration settings
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
-          
+
           # Add SUSFS configuration settings
           echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -140,22 +139,23 @@ jobs:
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          
+
           echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
-         
+
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
           cd common
           git add -A && git commit -a -m "BUILD Kernel"
-          
+
       - name: Add make name
         run: |
          cd kernel_workspace/kernel_platform
-         sed -i 's/res="\$res\$(cat "\$file")"/res="${{ github.event.inputs.KERNEL_NAME }}"/g' ./common/scripts/setlocalversion
-         sudo sed -i 's/-android15-8-g013ec21bba94-abogki383916444/-By-Futaba/g' ./common/scripts/setlocalversion
+         sed -i "s/res=\"\$res\$(cat \"\$file\")\"/res=\"${{ github.event.inputs.KERNEL_NAME }}\"/g" ./common/scripts/setlocalversion
+         # 注释掉这一行，避免将目标名称替换掉
+         # sudo sed -i 's/-android15-8-g013ec21bba94-abogki383916444/-By-Futaba/g' ./common/scripts/setlocalversion
 
       - name: Add sched_ext
         run: |
@@ -164,7 +164,7 @@ jobs:
          cp -r ./sched_ext/* ./common/kernel/sched
          rm -rf ./sched_ext/.git
          cd common/kernel/sched
-                   
+
       - name: Build kernel
         run: |
          cd kernel_workspace/kernel_platform
@@ -178,10 +178,10 @@ jobs:
          ./patch_linux
          rm -f Image
          mv oImage Image
-         
+
       - name: Make AnyKernel3
         run: |
-         git clone https://github.com/HanKuCha/AnyKernel3.git --depth=1      
+         git clone https://github.com/HanKuCha/AnyKernel3.git --depth=1
          rm -rf ./AnyKernel3/.git
          rm -rf ./AnyKernel3/push.sh
          cp kernel_workspace/kernel_platform/dist/Image ./AnyKernel3/
@@ -191,7 +191,7 @@ jobs:
         with:
          name: SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
          path: ./AnyKernel3/*
-         
+
       - name: Upload Image
         uses: actions/upload-artifact@v4
         with:
