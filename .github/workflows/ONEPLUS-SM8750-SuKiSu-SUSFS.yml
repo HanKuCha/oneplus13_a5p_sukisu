@@ -25,7 +25,7 @@ on:
       KERNEL_NAME:
         description: "内核名称修改(中文不行)"
         required: true
-        default: '-By-kuan-FutabaWa'
+        default: '-android15-8-g013ec21bba94-abogki383916444'
       KERNEL_TIME:
        description: "内核构建日期更改(默认为原厂)"
        required: true
