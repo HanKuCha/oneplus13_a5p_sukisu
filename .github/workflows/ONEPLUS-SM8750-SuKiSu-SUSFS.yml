@@ -1,5 +1,9 @@
 name: 一加13构建
 on:
+  # ✅ 定时触发：每三天 UTC 时间 4:00（北京时间 12:00）
+  schedule:
+    - cron: '0 4 */3 * *'
+  # ✅ 手动触发
   workflow_dispatch:
     inputs:
       CPU:
@@ -234,3 +238,52 @@ jobs:
         with:
          name: Image_SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
          path: kernel_workspace/kernel_platform/dist/Image
+
+      - name: Rename Artifact for Release
+        run: |
+          cd ./AnyKernel3 || { echo "错误：AnyKernel3目录不存在"; exit 1; }
+          shopt -s extglob
+          shopt -s dotglob  # 关键修复：包含隐藏文件
+          target_dir="SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}"
+          mkdir -p "$target_dir"
+          cp -r !("$target_dir") "$target_dir/" || { echo "文件复制失败"; exit 1; }
+          echo "验证目标目录内容：" && ls -l "$target_dir"  # 新增目录内容检查
+
+      - name: Package Release to ZIP                
+        run: |
+          cd ./AnyKernel3 || { echo "❌ 错误：AnyKernel3 目录不存在"; exit 1; }
+          target_zip="SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip"
+          dir_name="SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}"
+
+          if [ ! -d "$dir_name" ]; then
+          echo "❌ 致命错误：打包目录 $dir_name 不存在"
+          exit 1
+          fi
+          echo "预压缩目录结构：" && tree "$dir_name"
+          (cd "$dir_name" && zip -r "../$target_zip" * ) || { echo "❌ ZIP打包失败"; exit 1; }
+          echo "✅ ZIP打包成功"
+          echo "压缩包详细信息：" && unzip -l "$target_zip"
+
+      - name: Verify ZIP File Exists
+        run: |
+          ls -la ./AnyKernel3/SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip
+          if [ ! -f ./AnyKernel3/SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip ]; then
+            echo "&#10060; ZIP 文件未找到"
+            exit 1
+          fi
+
+      - name: Create Release and Upload Assets
+        if: ${{ success() }}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: Release
+          name: "SuKiSu Release ${{ env.KSUVER }}"
+          body: |
+            Build Details:
+            - CPU: ${{ github.event.inputs.CPU }}
+            - FEIL: ${{ github.event.inputs.FEIL }}
+            - KSU Version: ${{ env.KSUVER }}
+          draft: false
+          prerelease: false
+          files: |
+            ./AnyKernel3/SuKiSu_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}.zip
