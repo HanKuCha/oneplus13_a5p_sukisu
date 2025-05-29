@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       KERNEL_SUFFIX:
-        description: '内核后缀修改(可改中文和emoji)'
+        description: '内核名称修改(可改中文和emoji)'
         required: true
         default: '-酷安FutabaWa'
       KERNEL_TIME:
@@ -36,6 +36,8 @@ jobs:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
+      CCACHE_DIR: /home/runner/.ccache  
+      CCACHE_MAXSIZE: 8G
     steps:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
@@ -56,6 +58,15 @@ jobs:
         run: |
           sudo apt update && sudo apt upgrade -y
           sudo apt install -y python3 git curl
+          sudo apt install -y python3 git curl ccache
+
+      - name: Restore ccache
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.ccache
+          key: ccache-${{ runner.os }}-${{ github.ref }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
 
       - name: Install repo tool
         run: |
@@ -118,56 +129,70 @@ jobs:
          #include <linux/slab.h>
          #include <linux/string.h>
 
-         static int hmbird_read_version_type(void)
-         +{
-         +	struct device_node *node;
-         +	const char *type_str;
-         +	int ret = -EINVAL;
-         +
-         +	/* Find the oplus,hmbird node in device tree */
-         +	node = of_find_node_by_path("/soc/oplus,hmbird");
-         +	if (!node) {
-         +		pr_info("hmbird: No oplus,hmbird node found in device tree\n");
-         +		return ret;
-         +	}
-         +
-         +	/* Read the version_type/type property */
-         +	ret = of_property_read_string(of_get_child_by_name(node, "version_type"), 
-         +				"type", &type_str);
-         +	if (ret) {
-         +		pr_info("hmbird: Failed to read version_type/type from device tree\n");
-         +		of_node_put(node);
-         +		return ret;
-         +	}
-         +
-         +	/* Store the version type */
-         +	strlcpy(hmbird_version_type, type_str, sizeof(hmbird_version_type));
-         +	pr_info("hmbird: Version type from device tree: %s\n", hmbird_version_type);
-         +	
-         +	of_node_put(node);
-         +	return 0;
-         +}
-         +
-         +EXPORT_SYMBOL(hmbird_check_version_type);
- 
-         static int set_proc_buf_val(struct file *file, const char __user *buf, size_t count, int *val)
+         static int __init hmbird_patch_init(void)
          {
-         @@ -376,7 +432,15 @@ static int hmbird_proc_init(void)
- 
-         static int __init hmbird_common_init(void)
-         {
-         +	int ret;
-         +	
-         +	/* Read hmbird version type from device tree */
-         +	ret = hmbird_read_version_type();
-         +	if (ret) {
-         +		pr_warn("hmbird: Failed to read version type from device tree, defaulting to non-GKI\n");
-         +		/* Default to HMBIRD_OGKI if we can't read from device tree */
-         +		 strlcpy(hmbird_version_type, "HMBIRD_OGKI", sizeof(hmbird_version_type));
-         +	}
-         +	
-            return hmbird_proc_init();
+             struct device_node *ver_np;
+             const char *type;
+             int ret;
+
+             ver_np = of_find_node_by_path("/soc/oplus,hmbird/version_type");
+             if (!ver_np) {
+                  pr_info("hmbird_patch: version_type node not found\n");
+                  return 0;
+             }
+
+             ret = of_property_read_string(ver_np, "type", &type);
+             if (ret) {
+                  pr_info("hmbird_patch: type property not found\n");
+                  of_node_put(ver_np);
+                  return 0;
+             }
+
+             if (strcmp(type, "HMBIRD_OGKI")) {
+                  of_node_put(ver_np);
+                  return 0;
+             }
+
+             struct property *prop = of_find_property(ver_np, "type", NULL);
+             if (prop) {
+                  struct property *new_prop = kmalloc(sizeof(*prop), GFP_KERNEL);
+                  if (!new_prop) {
+                       pr_info("hmbird_patch: kmalloc for new_prop failed\n");
+                       of_node_put(ver_np);
+                       return 0;
+             }
+             memcpy(new_prop, prop, sizeof(*prop));
+             new_prop->value = kmalloc(strlen("HMBIRD_GKI") + 1, GFP_KERNEL);
+             if (!new_prop->value) {
+                  pr_info("hmbird_patch: kmalloc for new_prop->value failed\n");
+                  kfree(new_prop);
+                  of_node_put(ver_np);
+                  return 0;
+            }
+            strcpy(new_prop->value, "HMBIRD_GKI");
+            new_prop->length = strlen("HMBIRD_GKI") + 1;
+
+            if (of_remove_property(ver_np, prop) != 0) {
+                 pr_info("hmbird_patch: of_remove_property failed\n");
+                 return 0;
+            }
+            if (of_add_property(ver_np, new_prop) !=0) {
+                 pr_info("hmbird_patch: of_add_property failed\n");
+                 return 0;
+            }
+            pr_info("hmbird_patch: success from HMBIRD_OGKI to HMBIRD_GKI\n");
          }
+         else {
+             pr_info("hmbird_patch: type property structure not found\n");
+         }
+         of_node_put(ver_np);
+         return 0;
+         }
+         early_initcall(hmbird_patch_init);
+         MODULE_LICENSE("GPL");
+         MODULE_AUTHOR("reigadegr");
+         MODULE_DESCRIPTION("Forcefully convert HMBIRD_OGKI to HMBIRD_GKI.");
+         EOF
          if ! grep -q "hmbird_patch.o" Makefile; then
          echo "obj-y += hmbird_patch.o" >> Makefile
          fi
@@ -236,6 +261,7 @@ jobs:
          cd kernel_workspace/kernel_platform
          sed -i 's/${scm_version}//' ./common/scripts/setlocalversion
          sudo sed -i 's/-4k/${{ github.event.inputs.KERNEL_SUFFIX }}/g' ./common/arch/arm64/configs/gki_defconfig
+      
       - name: Add sched_ext
         if: ${{inputs.enable_feature_z }}
         run: |
@@ -255,6 +281,7 @@ jobs:
         run: |
           export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
           export PATH="/home/runner/work/oneplus13_a5p_sukisu/oneplus13_a5p_sukisu/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r510928/bin:$PATH"
+          export PATH="/usr/lib/ccache:$PATH"
           sudo apt install libelf-dev
           cd kernel_workspace/kernel_platform/common
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole LD=ld.lld  HOSTLD=ld.lld O=out KCFLAGS+=-Wno-error gki_defconfig all
