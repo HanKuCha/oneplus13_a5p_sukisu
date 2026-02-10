@@ -128,7 +128,7 @@ jobs:
           cd kernel_platform        
           
           # 使用动态补丁文件名
-          SUSFS_PATCH_FILE="50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION_MAJOR }}.${{ env.KERNEL_VERSION_PATCHLEVEL }}.patch"
+          SUSFS_PATCH_FILE="50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-6.6.patch"
           
           if [ -f "../susfs4ksu/kernel_patches/$SUSFS_PATCH_FILE" ]; then
             echo "使用动态补丁文件: $SUSFS_PATCH_FILE"
