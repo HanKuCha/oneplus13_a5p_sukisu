@@ -170,29 +170,29 @@ jobs:
       - name: Apply fake patch for task_mmu.c
         run: |
           cd kernel_workspace/kernel_platform/common
-          
+
           # 检查是否需要预先修复
           if [ -f "./fs/proc/task_mmu.c" ]; then
-            echo "检查 task_mmu.c 文件..."
-            
-            # 针对 android15-6.6 的特殊修复
-            if [[ "${{ env.KANDROID_VERSION }}" == "android15"]]; then
+              echo "检查 task_mmu.c 文件..."
+          fi
+
+          # 针对 android15-6.6 的特殊修复
+          if [[ "android15" == "android15" ]]; then
               if ! grep -q 'unsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c; then
-                echo "添加缺失的 nr_subpages 声明..."
-                # 在 int ret = 0, copied = 0; 后添加声明
-                sed -i '/int ret = 0, copied = 0;/a \\tunsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c
-                sed -i '/int ret = 0, copied = 0;/a \\tpagemap_entry_t *res = NULL;' ./fs/proc/task_mmu.c
-                echo "FAKE_PATCHED=1" >> $GITHUB_ENV
+                  echo "添加缺失的 nr_subpages 声明..."
+                  # 在 int ret = 0, copied = 0; 后添加声明
+                  sed -i '/int ret = 0, copied = 0;/a unsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c
+                  sed -i '/int ret = 0, copied = 0;/a \!tapemap_entry_t *res = NULL;' ./fs/proc/task_mmu.c
+                  echo "FAKE_PATCHED=1" >> $GITHUB_ENV
               fi
-            fi
-            
-            # 针对其他版本的特殊修复
-            if [[ "${{ env.KANDROID_VERSION }}" == "android12" || "${{ env.KANDROID_VERSION }}" == "android13" || "${{ env.KANDROID_VERSION }}" == "android14" ]]; then
-              if ! grep -q 'if (!vma_pages(vma))' ./fs/proc/task_mmu.c; then
-                echo "标记需要特殊处理的版本"
-                echo "NEEDS_SPECIAL_FIX=1" >> $GITHUB_ENV
+          fi
+
+          # 针对其他版本的特殊修复
+          if [[ "android15" == "android12" || "android15" == "android13" || "android15" == "android14" ]]; then
+              if ! grep -q 'if (lvm_pages(vma))' ./fs/proc/task_mmu.c; then
+                  echo "标记需要特殊处理的版本"
+                  echo "NEEDS_SPECIAL_FIX=1" >> $GITHUB_ENV
               fi
-            fi
           fi
 
       - name: Apply SUSFS patches
