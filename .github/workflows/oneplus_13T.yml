@@ -127,13 +127,7 @@ jobs:
           
           cd kernel_platform        
           
-          # 使用动态补丁文件名
-          SUSFS_PATCH_FILE="50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-6.6.patch"
-          
-          if [ -f "../susfs4ksu/kernel_patches/$SUSFS_PATCH_FILE" ]; then
-            echo "使用动态补丁文件: $SUSFS_PATCH_FILE"
-            cp "../susfs4ksu/kernel_patches/$SUSFS_PATCH_FILE" ./common/
-          elif [ -f "../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch" ]; then
+          if [ -f "../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch" ]; then
             echo "使用默认补丁文件"
             cp "../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch" ./common/
             SUSFS_PATCH_FILE="50_add_susfs_in_gki-android15-6.6.patch"
@@ -171,17 +165,9 @@ jobs:
         run: |
           cd kernel_workspace/kernel_platform/common
           PATCH_FILE="50_add_susfs_in_gki-android15-6.6.patch"
-          echo "正在应用 SUSFS 补丁: $PATCH_FILE"
-          
-          # 先尝试 dry-run
-          if patch -p1 --dry-run < "$PATCH_FILE" 2>&1 > patch_dry.log; then
-            echo "补丁可以应用，正在应用..."
-            patch -p1 < "$PATCH_FILE"
-            echo "SUSFS 补丁应用成功"
-          else
-            echo "补丁应用有冲突，尝试强制应用..."
-            patch -p1 -F 3 < "$PATCH_FILE" || echo "强制应用完成"
-          fi
+          echo "正在打susfs补丁"
+          patch -p1 < $PATCH_FILE || true
+          echo "susfs_patch完成"
           
           # 应用 syscall_hooks 补丁
           if [ -f "syscall_hooks.patch" ]; then
