@@ -290,7 +290,7 @@ jobs:
       - name: Apply Linux Patch
         run: |
          cd kernel_workspace/kernel_platform/common/out/arch/arm64/boot
-         curl -LO https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.0/patch_linux
+         curl -LO https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.13.0/patch_linux
          chmod +x patch_linux
          ./patch_linux
          rm -f Image
