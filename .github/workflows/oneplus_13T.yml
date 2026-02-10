@@ -122,7 +122,7 @@ jobs:
       - name: Set up susfs
         run: |
           cd kernel_workspace
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION_MAJOR }}.${{ env.KERNEL_VERSION_PATCHLEVEL }}
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ env.KANDROID_VERSION }}-6.6
           git clone https://github.com/SukiSU-Ultra/SukiSU_patch.git
           
           cd kernel_platform        
