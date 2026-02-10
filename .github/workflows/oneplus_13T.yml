@@ -176,7 +176,7 @@ jobs:
             echo "检查 task_mmu.c 文件..."
             
             # 针对 android15-6.6 的特殊修复
-            if [[ "${{ env.KANDROID_VERSION }}" == "android15" && "${{ env.KERNEL_VERSION_MAJOR }}.${{ env.KERNEL_VERSION_PATCHLEVEL }}" == "6.6" ]]; then
+            if [[ "${{ env.KANDROID_VERSION }}" == "android15"]]; then
               if ! grep -q 'unsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;' ./fs/proc/task_mmu.c; then
                 echo "添加缺失的 nr_subpages 声明..."
                 # 在 int ret = 0, copied = 0; 后添加声明
@@ -198,14 +198,7 @@ jobs:
       - name: Apply SUSFS patches
         run: |
           cd kernel_workspace/kernel_platform/common
-          
-          # 确定补丁文件名
-          if [ -f "50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION_MAJOR }}.${{ env.KERNEL_VERSION_PATCHLEVEL }}.patch" ]; then
-            PATCH_FILE="50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION_MAJOR }}.${{ env.KERNEL_VERSION_PATCHLEVEL }}.patch"
-          else
-            PATCH_FILE="50_add_susfs_in_gki-android15-6.6.patch"
-          fi
-          
+          PATCH_FILE="50_add_susfs_in_gki-android15-6.6.patch"
           echo "正在应用 SUSFS 补丁: $PATCH_FILE"
           
           # 先尝试 dry-run
