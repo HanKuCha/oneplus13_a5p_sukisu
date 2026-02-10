@@ -5,11 +5,11 @@ on:
       KERNEL_SUFFIX:
         description: '内核名称修改(可改中文和emoji)'
         required: true
-        default: '-酷安FutabaWa'
+        default: '-'
       KERNEL_TIME:
-       description: "内核构建日期更改(默认为原厂)"
+       description: "内核构建日期更改(F为当前时间戳)"
        required: true
-       default: 'Tue Dec 17 23:36:49 UTC 2024'
+       default: 'F'
       enable_feature_x:
        description: "是否启用kpm"
        required: false
@@ -280,7 +280,16 @@ jobs:
 
       - name: Build Kernel
         run: |
-          export KBUILD_BUILD_TIMESTAMP="${{ github.event.inputs.KERNEL_TIME }}"
+          # 处理时间戳：如果输入为F，则使用当前时间戳
+          if [ "${{ github.event.inputs.KERNEL_TIME }}" = "F" ] || [ "${{ github.event.inputs.KERNEL_TIME }}" = "f" ]; then
+            CURRENT_TIMESTAMP=$(date +%s)
+            export KBUILD_BUILD_TIMESTAMP="$CURRENT_TIMESTAMP"
+            echo "使用当前时间戳: $CURRENT_TIMESTAMP"
+          else
+            export KBUILD_BUILD_TIMESTAMP="${{ github.event.inputs.KERNEL_TIME }}"
+            echo "使用输入的时间戳: ${{ github.event.inputs.KERNEL_TIME }}"
+          fi
+          
           export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r510928/bin:$PATH"
           export PATH="/usr/lib/ccache:$PATH"
           sudo apt install libelf-dev
